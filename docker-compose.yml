@@ -1,0 +1,18 @@
+services:
+  maelstrom:
+    build: .
+    volumes:
+      # Mount source so rebuilds pick up code changes
+      - .:/app
+      # Persist cargo registry cache between runs
+      - cargo-registry:/usr/local/cargo/registry
+      - cargo-git:/usr/local/cargo/git
+    ports:
+      - "8080:8080"
+    # Keep container running so you can exec into it
+    stdin_open: true
+    tty: true
+
+volumes:
+  cargo-registry:
+  cargo-git:
