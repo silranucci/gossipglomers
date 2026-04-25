@@ -1,0 +1,39 @@
+{
+  "service": "Echo",
+  "messages": [
+    {
+      "name": "init",
+      "response_type": "init_ok",
+      "request": {
+        "type": "object",
+        "properties": {
+          "node_id":  { "type": "string" },
+          "node_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["node_id", "node_ids"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "echo",
+      "response_type": "echo_ok",
+      "request": {
+        "type": "object",
+        "properties": {
+          "echo": { "type": "string" }
+        },
+        "required": ["echo"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "echo": { "type": "string" }
+        },
+        "required": ["echo"]
+      }
+    }
+  ]
+}
