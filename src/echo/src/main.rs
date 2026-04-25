@@ -1,3 +1,10 @@
+mod handler;
+
+use maelstrom::Runtime;
+
 fn main() {
-    println!("Hello, world!");
+    let runtime = Runtime::new();
+    runtime
+        .run(|msg| handler::handler(msg.body))
+        .expect("failed");
 }
