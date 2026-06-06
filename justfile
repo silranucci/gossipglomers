@@ -13,14 +13,15 @@ shell:
 # Run a Maelstrom workload test.
 #
 # Usage:
-#   just test echo               # 1 node, 10 s
-#   just test echo 3             # 3 nodes, 10 s
-#   just test echo 3 30          # 3 nodes, 30 s
-test binary nodes="1" seconds="10":
+#   just test echo
+#   just test echo 3 30
+#   just test unique-ids 3 30 "--rate 1000 --availability total --nemesis partition"
+test binary nodes="1" seconds="10" extra="":
     docker compose run --rm -it maelstrom bash -c \
         "cargo build --bin {{binary}} && \
          maelstrom test \
              -w {{binary}} \
              --bin target/debug/{{binary}} \
              --node-count {{nodes}} \
-             --time-limit {{seconds}}"
+             --time-limit {{seconds}} \
+             {{extra}}"

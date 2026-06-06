@@ -1,5 +1,5 @@
 [workspace]
-members = ["src/maelstrom", "src/maelstrom-build", "src/echo"]
+members = ["src/maelstrom", "src/maelstrom-build", "src/echo", "src/unique-ids"]
 resolver = "3"
 
 [workspace.dependencies]

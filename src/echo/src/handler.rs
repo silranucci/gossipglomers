@@ -3,12 +3,27 @@ use maelstrom::{
     error::ErrorCode,
     message::{Metadata, Request, Response},
 };
+use std::sync::OnceLock;
 
-pub struct EchoService;
+pub struct EchoService {
+    node_id: OnceLock<String>,
+    node_ids: OnceLock<Vec<String>>,
+}
+
+impl Default for EchoService {
+    fn default() -> Self {
+        Self {
+            node_id: OnceLock::new(),
+            node_ids: OnceLock::new(),
+        }
+    }
+}
 
 impl EchoApi for EchoService {
-    async fn init(req: Request<Init>) -> Result<Response<InitOk>, ErrorCode> {
-        let metadata = req.metadata();
+    async fn init(&self, req: Request<Init>) -> Result<Response<InitOk>, ErrorCode> {
+        let (metadata, body) = req.into_parts();
+        self.node_id.set(body.node_id).ok();
+        self.node_ids.set(body.node_ids).ok();
         Ok(Response::new(
             Metadata {
                 src: metadata.dest,
@@ -21,7 +36,7 @@ impl EchoApi for EchoService {
         ))
     }
 
-    async fn echo(req: Request<Echo>) -> Result<Response<EchoOk>, ErrorCode> {
+    async fn echo(&self, req: Request<Echo>) -> Result<Response<EchoOk>, ErrorCode> {
         let (metadata, body) = req.into_parts();
         Ok(Response::new(
             Metadata {

@@ -20,6 +20,7 @@ pub struct EchoOk {
 }
 pub trait EchoApi {
     fn init(
+        &self,
         req: maelstrom::message::Request<Init>,
     ) -> impl ::std::future::Future<
         Output = ::std::result::Result<
@@ -28,6 +29,7 @@ pub trait EchoApi {
         >,
     > + ::std::marker::Send;
     fn echo(
+        &self,
         req: maelstrom::message::Request<Echo>,
     ) -> impl ::std::future::Future<
         Output = ::std::result::Result<
@@ -36,16 +38,16 @@ pub trait EchoApi {
         >,
     > + ::std::marker::Send;
 }
-pub struct EchoServer<T>(::std::marker::PhantomData<T>);
-impl<T> ::std::default::Default for EchoServer<T> {
-    fn default() -> Self {
-        Self(::std::marker::PhantomData)
+pub struct EchoServer<T>(::std::sync::Arc<T>);
+impl<T> EchoServer<T> {
+    pub fn new(inner: T) -> Self {
+        Self(::std::sync::Arc::new(inner))
     }
 }
 impl<T> maelstrom::service::Service<maelstrom::message::Request<::serde_json::Value>>
 for EchoServer<T>
 where
-    T: EchoApi + ::std::marker::Send,
+    T: EchoApi + ::std::marker::Send + ::std::marker::Sync,
 {
     type Response = maelstrom::message::Response<::serde_json::Value>;
     type Error = maelstrom::error::Error;
@@ -54,8 +56,14 @@ where
         req: maelstrom::message::Request<::serde_json::Value>,
     ) -> ::std::result::Result<Self::Response, Self::Error> {
         match req.metadata().kind.as_str() {
-            "init" => unary(|r| T::init(r), req).await,
-            "echo" => unary(|r| T::echo(r), req).await,
+            "init" => {
+                let inner = ::std::sync::Arc::clone(&self.0);
+                unary(move |r| async move { inner.init(r).await }, req).await
+            }
+            "echo" => {
+                let inner = ::std::sync::Arc::clone(&self.0);
+                unary(move |r| async move { inner.echo(r).await }, req).await
+            }
             _kind => {
                 Err(
                     maelstrom::error::Error::from(
