@@ -2,17 +2,14 @@ services:
   maelstrom:
     build: .
     volumes:
-      # Mount source so rebuilds pick up code changes
       - .:/app
-      # Persist cargo registry cache between runs
       - cargo-registry:/usr/local/cargo/registry
       - cargo-git:/usr/local/cargo/git
-    ports:
-      - "8080:8080"
-    # Keep container running so you can exec into it
-    stdin_open: true
-    tty: true
+      # Separate volume for build artifacts: keeps the Linux binaries isolated
+      # from the macOS host's target/ directory and persists them across restarts.
+      - target:/app/target
 
 volumes:
   cargo-registry:
   cargo-git:
+  target:
