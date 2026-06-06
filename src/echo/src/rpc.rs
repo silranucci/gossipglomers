@@ -45,7 +45,7 @@ impl<T> EchoServer<T> {
     }
 }
 impl<T> maelstrom::service::Service<maelstrom::message::Request<::serde_json::Value>>
-for EchoServer<T>
+    for EchoServer<T>
 where
     T: EchoApi + ::std::marker::Send + ::std::marker::Sync,
 {
@@ -64,26 +64,18 @@ where
                 let inner = ::std::sync::Arc::clone(&self.0);
                 unary(move |r| async move { inner.echo(r).await }, req).await
             }
-            _kind => {
-                Err(
-                    maelstrom::error::Error::from(
-                        maelstrom::error::ErrorCode::NotSupported,
-                    ),
-                )
-            }
+            _kind => Err(maelstrom::error::Error::from(
+                maelstrom::error::ErrorCode::NotSupported,
+            )),
         }
     }
 }
 async fn unary<F, Fut, ReqBody, ResBody>(
     f: F,
     req: maelstrom::message::Request<::serde_json::Value>,
-) -> ::std::result::Result<
-    maelstrom::message::Response<::serde_json::Value>,
-    maelstrom::error::Error,
->
+) -> ::std::result::Result<maelstrom::message::Response<::serde_json::Value>, maelstrom::error::Error>
 where
-    F: ::std::ops::FnOnce(maelstrom::message::Request<ReqBody>) -> Fut
-        + ::std::marker::Send,
+    F: ::std::ops::FnOnce(maelstrom::message::Request<ReqBody>) -> Fut + ::std::marker::Send,
     Fut: ::std::future::Future<
             Output = ::std::result::Result<
                 maelstrom::message::Response<ResBody>,
@@ -94,17 +86,14 @@ where
     ResBody: ::serde::Serialize + ::std::marker::Send,
 {
     let (metadata, body_value) = req.into_parts();
-    let typed_body: ReqBody = ::serde_json::from_value(body_value)
-        .map_err(|_| maelstrom::error::Error::from(
-            maelstrom::error::ErrorCode::MalformedRequest,
-        ))?;
+    let typed_body: ReqBody = ::serde_json::from_value(body_value).map_err(|_| {
+        maelstrom::error::Error::from(maelstrom::error::ErrorCode::MalformedRequest)
+    })?;
     let typed_req = maelstrom::message::Request::new(metadata, typed_body);
     let response = f(typed_req).await.map_err(maelstrom::error::Error::from)?;
     let (res_metadata, res_body) = response.into_parts();
-    Ok(
-        maelstrom::message::Response::new(
-            res_metadata,
-            ::serde_json::to_value(res_body).expect("failed to serialize response body"),
-        ),
-    )
+    Ok(maelstrom::message::Response::new(
+        res_metadata,
+        ::serde_json::to_value(res_body).expect("failed to serialize response body"),
+    ))
 }
