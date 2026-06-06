@@ -1,29 +1,32 @@
-use crate::rpc::{Echo, EchoApi, EchoOk, Init, InitOk};
+use crate::rpc::{Generate, GenerateOk, Init, InitOk, UniqueIdApi};
 use maelstrom::{
     error::ErrorCode,
     message::{Metadata, Request, Response},
 };
-use std::sync::OnceLock;
+use std::sync::{
+    OnceLock,
+    atomic::{AtomicU64, Ordering},
+};
 
-pub struct EchoService {
+pub struct UniqueIdService {
     node_id: OnceLock<String>,
-    node_ids: OnceLock<Vec<String>>,
+    counter: AtomicU64,
 }
 
-impl Default for EchoService {
+impl Default for UniqueIdService {
     fn default() -> Self {
         Self {
             node_id: OnceLock::new(),
-            node_ids: OnceLock::new(),
+            counter: AtomicU64::new(0),
         }
     }
 }
 
-impl EchoApi for EchoService {
+impl UniqueIdApi for UniqueIdService {
     async fn init(&self, req: Request<Init>) -> Result<Response<InitOk>, ErrorCode> {
         let (metadata, body) = req.into_parts();
         self.node_id.set(body.node_id).ok();
-        self.node_ids.set(body.node_ids).ok();
+
         Ok(Response::new(
             Metadata {
                 src: metadata.dest,
@@ -36,17 +39,26 @@ impl EchoApi for EchoService {
         ))
     }
 
-    async fn echo(&self, req: Request<Echo>) -> Result<Response<EchoOk>, ErrorCode> {
-        let (metadata, body) = req.into_parts();
+    async fn generate(&self, req: Request<Generate>) -> Result<Response<GenerateOk>, ErrorCode> {
+        let metadata = req.metadata();
+
         Ok(Response::new(
             Metadata {
                 src: metadata.dest,
                 dest: metadata.src,
-                kind: "echo_ok".to_string(),
+                kind: "generate_ok".to_string(),
                 msg_id: None,
                 in_reply_to: metadata.msg_id,
             },
-            EchoOk { echo: body.echo },
+            GenerateOk {
+                id: simple_unique_id(&self.node_id, &self.counter),
+            },
         ))
     }
+}
+
+fn simple_unique_id(node_id: &OnceLock<String>, counter: &AtomicU64) -> String {
+    let node_id = node_id.get().map(|s| s.as_str()).unwrap();
+    let seq = counter.fetch_add(1, Ordering::Relaxed);
+    format!("{}-{}", node_id, seq)
 }

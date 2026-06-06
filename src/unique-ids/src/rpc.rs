@@ -11,14 +11,12 @@ pub struct Init {
 pub struct InitOk {}
 #[allow(dead_code)]
 #[derive(::serde::Deserialize, ::serde::Serialize)]
-pub struct Echo {
-    pub echo: ::std::string::String,
-}
+pub struct Generate {}
 #[derive(::serde::Serialize)]
-pub struct EchoOk {
-    pub echo: ::std::string::String,
+pub struct GenerateOk {
+    pub id: ::std::string::String,
 }
-pub trait EchoApi {
+pub trait UniqueIdApi {
     fn init(
         &self,
         req: maelstrom::message::Request<Init>,
@@ -28,26 +26,26 @@ pub trait EchoApi {
             maelstrom::error::ErrorCode,
         >,
     > + ::std::marker::Send;
-    fn echo(
+    fn generate(
         &self,
-        req: maelstrom::message::Request<Echo>,
+        req: maelstrom::message::Request<Generate>,
     ) -> impl ::std::future::Future<
         Output = ::std::result::Result<
-            maelstrom::message::Response<EchoOk>,
+            maelstrom::message::Response<GenerateOk>,
             maelstrom::error::ErrorCode,
         >,
     > + ::std::marker::Send;
 }
-pub struct EchoServer<T>(::std::sync::Arc<T>);
-impl<T> EchoServer<T> {
+pub struct UniqueIdServer<T>(::std::sync::Arc<T>);
+impl<T> UniqueIdServer<T> {
     pub fn new(inner: T) -> Self {
         Self(::std::sync::Arc::new(inner))
     }
 }
 impl<T> maelstrom::service::Service<maelstrom::message::Request<::serde_json::Value>>
-    for EchoServer<T>
+    for UniqueIdServer<T>
 where
-    T: EchoApi + ::std::marker::Send + ::std::marker::Sync,
+    T: UniqueIdApi + ::std::marker::Send + ::std::marker::Sync,
 {
     type Response = maelstrom::message::Response<::serde_json::Value>;
     type Error = maelstrom::error::Error;
@@ -60,9 +58,9 @@ where
                 let inner = ::std::sync::Arc::clone(&self.0);
                 unary(move |r| async move { inner.init(r).await }, req).await
             }
-            "echo" => {
+            "generate" => {
                 let inner = ::std::sync::Arc::clone(&self.0);
-                unary(move |r| async move { inner.echo(r).await }, req).await
+                unary(move |r| async move { inner.generate(r).await }, req).await
             }
             _kind => Err(maelstrom::error::Error::from(
                 maelstrom::error::ErrorCode::NotSupported,

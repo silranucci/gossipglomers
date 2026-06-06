@@ -149,6 +149,7 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
 
         trait_methods.push(quote! {
             fn #method_ident(
+                &self,
                 req: maelstrom::message::Request<#req_ident>,
             ) -> impl ::std::future::Future<
                 Output = ::std::result::Result<
@@ -159,7 +160,10 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
         });
 
         match_arms.push(quote! {
-            #msg_type_str => unary(|r| T::#method_ident(r), req).await,
+            #msg_type_str => {
+                let inner = ::std::sync::Arc::clone(&self.0);
+                unary(move |r| async move { inner.#method_ident(r).await }, req).await
+            }
         });
     }
 
@@ -172,11 +176,11 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
             #(#trait_methods)*
         }
 
-        pub struct #server_ident<T>(::std::marker::PhantomData<T>);
+        pub struct #server_ident<T>(::std::sync::Arc<T>);
 
-        impl<T> ::std::default::Default for #server_ident<T> {
-            fn default() -> Self {
-                Self(::std::marker::PhantomData)
+        impl<T> #server_ident<T> {
+            pub fn new(inner: T) -> Self {
+                Self(::std::sync::Arc::new(inner))
             }
         }
 
@@ -184,7 +188,7 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
             maelstrom::message::Request<::serde_json::Value>
         > for #server_ident<T>
         where
-            T: #api_ident + ::std::marker::Send,
+            T: #api_ident + ::std::marker::Send + ::std::marker::Sync,
         {
             type Response = maelstrom::message::Response<::serde_json::Value>;
             type Error = maelstrom::error::Error;

@@ -1,0 +1,50 @@
+{
+  "service": "UniqueId",
+  "messages": [
+    {
+      "name": "init",
+      "response_type": "init_ok",
+      "request": {
+        "type": "object",
+        "properties": {
+          "node_id": {
+            "type": "string"
+          },
+          "node_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "node_id",
+          "node_ids"
+        ]
+      },
+      "response": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "generate",
+      "response_type": "generate_ok",
+      "request": {
+        "type": "object",
+        "properties": {}
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    }
+  ]
+}
