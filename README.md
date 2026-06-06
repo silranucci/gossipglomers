@@ -8,8 +8,8 @@ The challenges use [Maelstrom](https://github.com/jepsen-io/maelstrom), a workbe
 
 | # | Challenge | Status |
 |---|-----------|--------|
-| 1 | Echo | In progress |
-| 2 | Unique ID Generation | - |
+| 1 | Echo | Done |
+| 2 | Unique ID Generation | Done |
 | 3a | Single-Node Broadcast | - |
 | 3b | Multi-Node Broadcast | - |
 | 3c | Fault Tolerant Broadcast | - |
