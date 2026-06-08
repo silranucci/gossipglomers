@@ -89,48 +89,32 @@ impl<B> Request<B> {
     }
 }
 
-#[derive(Serialize, Clone)]
-pub struct Response<B>(Message<B>);
+/// Handler-facing response. Carries the typed payload and an optional metadata
+/// override. When `metadata` is `None` the runtime derives routing automatically
+/// from the incoming request (swap `src`/`dest`, set `in_reply_to`).
+pub struct Response<B> {
+    pub(crate) metadata: Option<Metadata>,
+    pub(crate) payload: B,
+}
 
 impl<B> Response<B> {
-    pub fn new(metadata: Metadata, payload: B) -> Self {
-        Self(Message {
-            src: metadata.src,
-            dest: metadata.dest,
-            body: Body {
-                kind: metadata.kind,
-                msg_id: metadata.msg_id,
-                in_reply_to: metadata.in_reply_to,
-                payload,
-            },
-        })
+    /// Create a response with no metadata override; the framework fills in
+    /// `src`, `dest`, `kind`, and `in_reply_to` automatically.
+    pub fn new(payload: B) -> Self {
+        Self { metadata: None, payload }
     }
 
-    pub fn metadata(&self) -> Metadata {
-        Metadata {
-            src: self.0.src.clone(),
-            dest: self.0.dest.clone(),
-            kind: self.0.body.kind.clone(),
-            msg_id: self.0.body.msg_id,
-            in_reply_to: self.0.body.in_reply_to,
-        }
+    /// Create a response with explicit routing metadata.
+    pub fn with_metadata(metadata: Metadata, payload: B) -> Self {
+        Self { metadata: Some(metadata), payload }
     }
 
     pub fn body(&self) -> &B {
-        &self.0.body.payload
+        &self.payload
     }
 
-    pub fn into_parts(self) -> (Metadata, B) {
-        (
-            Metadata {
-                src: self.0.src,
-                dest: self.0.dest,
-                kind: self.0.body.kind,
-                msg_id: self.0.body.msg_id,
-                in_reply_to: self.0.body.in_reply_to,
-            },
-            self.0.body.payload,
-        )
+    pub fn into_parts(self) -> (Option<Metadata>, B) {
+        (self.metadata, self.payload)
     }
 }
 

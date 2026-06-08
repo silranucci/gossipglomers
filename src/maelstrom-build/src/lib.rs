@@ -129,6 +129,7 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
         let res_ident = ident(&pascal_case(&msg.response_type));
         let method_ident = ident(&msg.name);
         let msg_type_str = &msg.name;
+        let res_type_str = &msg.response_type;
 
         let req_fields = object_fields(&msg.request);
         struct_tokens.push(quote! {
@@ -162,7 +163,7 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
         match_arms.push(quote! {
             #msg_type_str => {
                 let inner = ::std::sync::Arc::clone(&self.0);
-                unary(move |r| async move { inner.#method_ident(r).await }, req).await
+                unary(#res_type_str, move |r| async move { inner.#method_ident(r).await }, req).await
             }
         });
     }
@@ -190,7 +191,7 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
         where
             T: #api_ident + ::std::marker::Send + ::std::marker::Sync,
         {
-            type Response = maelstrom::message::Response<::serde_json::Value>;
+            type Response = maelstrom::message::Message<::serde_json::Value>;
             type Error = maelstrom::error::Error;
 
             async fn call(
@@ -213,10 +214,11 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
 fn unary_tokens() -> proc_macro2::TokenStream {
     quote! {
         async fn unary<F, Fut, ReqBody, ResBody>(
+            response_type: &'static str,
             f: F,
             req: maelstrom::message::Request<::serde_json::Value>,
         ) -> ::std::result::Result<
-            maelstrom::message::Response<::serde_json::Value>,
+            maelstrom::message::Message<::serde_json::Value>,
             maelstrom::error::Error,
         >
         where
@@ -230,16 +232,29 @@ fn unary_tokens() -> proc_macro2::TokenStream {
             ReqBody: ::serde::de::DeserializeOwned + ::std::marker::Send,
             ResBody: ::serde::Serialize + ::std::marker::Send,
         {
-            let (metadata, body_value) = req.into_parts();
+            let (req_meta, body_value) = req.into_parts();
             let typed_body: ReqBody = ::serde_json::from_value(body_value)
                 .map_err(|_| maelstrom::error::Error::from(maelstrom::error::ErrorCode::MalformedRequest))?;
-            let typed_req = maelstrom::message::Request::new(metadata, typed_body);
+            let typed_req = maelstrom::message::Request::new(req_meta.clone(), typed_body);
             let response = f(typed_req).await.map_err(maelstrom::error::Error::from)?;
-            let (res_metadata, res_body) = response.into_parts();
-            Ok(maelstrom::message::Response::new(
-                res_metadata,
-                ::serde_json::to_value(res_body).expect("failed to serialize response body"),
-            ))
+            let (override_meta, res_body) = response.into_parts();
+            let meta = override_meta.unwrap_or_else(|| maelstrom::message::Metadata {
+                src: req_meta.dest,
+                dest: req_meta.src,
+                kind: response_type.to_string(),
+                msg_id: None,
+                in_reply_to: req_meta.msg_id,
+            });
+            Ok(maelstrom::message::Message {
+                src: meta.src,
+                dest: meta.dest,
+                body: maelstrom::message::Body {
+                    kind: meta.kind,
+                    msg_id: meta.msg_id,
+                    in_reply_to: meta.in_reply_to,
+                    payload: ::serde_json::to_value(res_body).expect("failed to serialize response body"),
+                },
+            })
         }
     }
 }

@@ -8,7 +8,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use crate::{
     error::Error,
-    message::{Request, Response},
+    message::{Message, Request},
     service::Service,
 };
 
@@ -28,7 +28,7 @@ impl Runtime {
     pub async fn run<S, E, B>(&self, mut service: S) -> io::Result<()>
     where
         E: Into<Error> + Send,
-        S: Service<Request<serde_json::Value>, Response = Response<B>, Error = E> + Send,
+        S: Service<Request<serde_json::Value>, Response = Message<B>, Error = E> + Send,
         B: Serialize + Send,
     {
         let stdin = tokio::io::stdin();
@@ -48,7 +48,7 @@ impl Runtime {
             };
 
             match service.call(request).await {
-                Ok(response) => self.send(response).await?,
+                Ok(message) => self.send(message).await?,
                 Err(e) => {
                     let err: Error = e.into();
                     stderr.write_all(format!("{err:?}\n").as_bytes()).await.ok();
@@ -59,9 +59,9 @@ impl Runtime {
         Ok(())
     }
 
-    async fn send<B: Serialize>(&self, response: Response<B>) -> io::Result<()> {
+    async fn send<B: Serialize>(&self, message: Message<B>) -> io::Result<()> {
         let mut stdout = tokio::io::stdout();
-        let mut bytes = serde_json::to_vec(&response).expect("failed to serialize");
+        let mut bytes = serde_json::to_vec(&message).expect("failed to serialize");
         bytes.push(b'\n');
         stdout.write_all(&bytes).await?;
         stdout.flush().await

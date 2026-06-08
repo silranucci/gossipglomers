@@ -1,8 +1,5 @@
 use crate::rpc::{Generate, GenerateOk, Init, InitOk, UniqueIdApi};
-use maelstrom::{
-    error::ErrorCode,
-    message::{Metadata, Request, Response},
-};
+use maelstrom::{error::ErrorCode, message::{Request, Response}};
 use std::sync::{
     OnceLock,
     atomic::{AtomicU64, Ordering},
@@ -24,41 +21,13 @@ impl Default for UniqueIdService {
 
 impl UniqueIdApi for UniqueIdService {
     async fn init(&self, req: Request<Init>) -> Result<Response<InitOk>, ErrorCode> {
-        let (metadata, body) = req.into_parts();
-        self.node_id.set(body.node_id).ok();
-
-        Ok(Response::new(
-            Metadata {
-                src: metadata.dest,
-                dest: metadata.src,
-                kind: "init_ok".to_string(),
-                msg_id: None,
-                in_reply_to: metadata.msg_id,
-            },
-            InitOk {},
-        ))
+        self.node_id.set(req.body().node_id.clone()).ok();
+        Ok(Response::new(InitOk {}))
     }
 
-    async fn generate(&self, req: Request<Generate>) -> Result<Response<GenerateOk>, ErrorCode> {
-        let metadata = req.metadata();
-
-        Ok(Response::new(
-            Metadata {
-                src: metadata.dest,
-                dest: metadata.src,
-                kind: "generate_ok".to_string(),
-                msg_id: None,
-                in_reply_to: metadata.msg_id,
-            },
-            GenerateOk {
-                id: simple_unique_id(&self.node_id, &self.counter),
-            },
-        ))
+    async fn generate(&self, _req: Request<Generate>) -> Result<Response<GenerateOk>, ErrorCode> {
+        let node_id = self.node_id.get().map(|s| s.as_str()).unwrap_or("unknown");
+        let seq = self.counter.fetch_add(1, Ordering::Relaxed);
+        Ok(Response::new(GenerateOk { id: format!("{}-{}", node_id, seq) }))
     }
-}
-
-fn simple_unique_id(node_id: &OnceLock<String>, counter: &AtomicU64) -> String {
-    let node_id = node_id.get().map(|s| s.as_str()).unwrap();
-    let seq = counter.fetch_add(1, Ordering::Relaxed);
-    format!("{}-{}", node_id, seq)
 }
