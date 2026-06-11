@@ -1,10 +1,13 @@
+pub mod client;
 pub mod error;
 pub mod message;
+mod mux;
 pub mod service;
+
+pub use client::Client;
 
 use serde::Serialize;
 use std::io;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 use crate::{
     error::Error,
@@ -14,15 +17,9 @@ use crate::{
 
 pub struct Runtime;
 
-impl Default for Runtime {
-    fn default() -> Self {
-        Self
-    }
-}
-
 impl Runtime {
     pub fn new() -> Self {
-        Self::default()
+        Self
     }
 
     pub async fn run<S, E, B>(&self, mut service: S) -> io::Result<()>
@@ -31,39 +28,31 @@ impl Runtime {
         S: Service<Request<serde_json::Value>, Response = Message<B>, Error = E> + Send,
         B: Serialize + Send,
     {
-        let stdin = tokio::io::stdin();
-        let mut stderr = tokio::io::stderr();
-        let mut lines = BufReader::new(stdin).lines();
+        let mux = mux::get();
+        let mut requests_rx = mux
+            .requests_rx
+            .lock()
+            .unwrap()
+            .take()
+            .expect("Runtime::run called more than once");
 
-        while let Some(line) = lines.next_line().await? {
-            let request: Request<serde_json::Value> = match serde_json::from_str(&line) {
-                Ok(r) => r,
-                Err(e) => {
-                    stderr
-                        .write_all(format!("deserialize error: {e}\n").as_bytes())
-                        .await
-                        .ok();
-                    continue;
-                }
-            };
-
+        while let Some(msg) = requests_rx.recv().await {
+            let request = Request::from_message(msg);
             match service.call(request).await {
-                Ok(message) => self.send(message).await?,
+                Ok(reply) => mux.write(reply),
                 Err(e) => {
                     let err: Error = e.into();
-                    stderr.write_all(format!("{err:?}\n").as_bytes()).await.ok();
+                    eprintln!("{err:?}");
                 }
             }
         }
 
         Ok(())
     }
+}
 
-    async fn send<B: Serialize>(&self, message: Message<B>) -> io::Result<()> {
-        let mut stdout = tokio::io::stdout();
-        let mut bytes = serde_json::to_vec(&message).expect("failed to serialize");
-        bytes.push(b'\n');
-        stdout.write_all(&bytes).await?;
-        stdout.flush().await
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new()
     }
 }
