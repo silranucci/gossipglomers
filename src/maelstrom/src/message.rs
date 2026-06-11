@@ -75,6 +75,10 @@ impl<B> Request<B> {
         &self.0.body.payload
     }
 
+    pub(crate) fn from_message(msg: Message<B>) -> Self {
+        Self(msg)
+    }
+
     pub fn into_parts(self) -> (Metadata, B) {
         (
             Metadata {
