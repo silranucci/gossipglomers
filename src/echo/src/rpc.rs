@@ -7,14 +7,16 @@ pub struct Init {
     pub node_id: ::std::string::String,
     pub node_ids: ::std::vec::Vec<::std::string::String>,
 }
-#[derive(::serde::Serialize)]
+#[allow(dead_code)]
+#[derive(::serde::Deserialize, ::serde::Serialize)]
 pub struct InitOk {}
 #[allow(dead_code)]
 #[derive(::serde::Deserialize, ::serde::Serialize)]
 pub struct Echo {
     pub echo: ::std::string::String,
 }
-#[derive(::serde::Serialize)]
+#[allow(dead_code)]
+#[derive(::serde::Deserialize, ::serde::Serialize)]
 pub struct EchoOk {
     pub echo: ::std::string::String,
 }
@@ -72,6 +74,48 @@ where
                 )
             }
         }
+    }
+}
+#[derive(Clone)]
+pub struct EchoClient {
+    inner: maelstrom::Client,
+}
+impl EchoClient {
+    pub fn new() -> Self {
+        Self {
+            inner: maelstrom::Client::new(),
+        }
+    }
+    pub async fn init(
+        &self,
+        dest: impl ::std::convert::Into<::std::string::String>,
+        req: Init,
+    ) -> ::std::result::Result<InitOk, maelstrom::error::Error> {
+        let reply = self.inner.rpc(dest, "init", &req).await?;
+        ::serde_json::from_value(reply.body.payload)
+            .map_err(|_| {
+                maelstrom::error::Error::from(
+                    maelstrom::error::ErrorCode::MalformedRequest,
+                )
+            })
+    }
+    pub async fn echo(
+        &self,
+        dest: impl ::std::convert::Into<::std::string::String>,
+        req: Echo,
+    ) -> ::std::result::Result<EchoOk, maelstrom::error::Error> {
+        let reply = self.inner.rpc(dest, "echo", &req).await?;
+        ::serde_json::from_value(reply.body.payload)
+            .map_err(|_| {
+                maelstrom::error::Error::from(
+                    maelstrom::error::ErrorCode::MalformedRequest,
+                )
+            })
+    }
+}
+impl ::std::default::Default for EchoClient {
+    fn default() -> Self {
+        Self::new()
     }
 }
 async fn unary<F, Fut, ReqBody, ResBody>(
