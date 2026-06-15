@@ -17,7 +17,7 @@ shell:
 #   just test echo 3 30
 #   just test unique-ids 3 30 "--rate 1000 --availability total --nemesis partition"
 test binary nodes="1" seconds="10" extra="":
-    docker compose run --rm -it maelstrom bash -c \
+    docker compose run --rm maelstrom bash -c \
         "cargo build --bin {{binary}} && \
          maelstrom test \
              -w {{binary}} \
