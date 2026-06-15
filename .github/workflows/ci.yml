@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.filter.outputs.core }}
+      echo: ${{ steps.filter.outputs.echo }}
+      unique_ids: ${{ steps.filter.outputs.unique_ids }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            core:
+              - 'Dockerfile'
+              - 'Cargo.toml'
+              - 'src/maelstrom/**'
+              - 'src/maelstrom-build/**'
+            echo:
+              - 'src/echo/**'
+            unique_ids:
+              - 'src/unique-ids/**'
+
+  test-echo:
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.echo == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: gossipglomers-maelstrom:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Test
+        run: just test echo
+      - name: Verify result
+        run: ./scripts/verify-maelstrom.sh
+
+  test-unique-ids:
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.unique_ids ==
+      'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: gossipglomers-maelstrom:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Test
+        run: just test unique-ids 3 30 "--rate 1000 --availability total --nemesis
+          partition"
+      - name: Verify result
+        run: ./scripts/verify-maelstrom.sh

@@ -1,6 +1,7 @@
 services:
   maelstrom:
     build: .
+    image: gossipglomers-maelstrom:latest
     volumes:
       - .:/app
       - cargo-registry:/usr/local/cargo/registry
