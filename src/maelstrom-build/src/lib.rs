@@ -70,6 +70,9 @@ enum JsonSchema {
     Null,
     #[serde(rename = "array")]
     Array { items: Box<JsonSchema> },
+    /// Unstructured / dynamic object — maps to `serde_json::Value`.
+    #[serde(rename = "object")]
+    Object,
 }
 
 /// Read a JSON Schema protocol descriptor and write generated Rust source to
@@ -117,10 +120,12 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
     let service = &schema.service;
     let api_ident = ident(&format!("{}Api", service));
     let server_ident = ident(&format!("{}Server", service));
+    let client_ident = ident(&format!("{}Client", service));
 
     let mut struct_tokens: Vec<proc_macro2::TokenStream> = vec![];
     let mut trait_methods: Vec<proc_macro2::TokenStream> = vec![];
     let mut match_arms: Vec<proc_macro2::TokenStream> = vec![];
+    let mut client_methods: Vec<proc_macro2::TokenStream> = vec![];
 
     for msg in &schema.messages {
         // "echo"    → Echo     (request struct)
@@ -142,7 +147,8 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
 
         let res_fields = object_fields(&msg.response);
         struct_tokens.push(quote! {
-            #[derive(::serde::Serialize)]
+            #[allow(dead_code)]
+            #[derive(::serde::Deserialize, ::serde::Serialize)]
             pub struct #res_ident {
                 #(#res_fields),*
             }
@@ -164,6 +170,19 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
             #msg_type_str => {
                 let inner = ::std::sync::Arc::clone(&self.0);
                 unary(#res_type_str, move |r| async move { inner.#method_ident(r).await }, req).await
+            }
+        });
+
+        client_methods.push(quote! {
+            pub async fn #method_ident(
+                &self,
+                dest: impl ::std::convert::Into<::std::string::String>,
+                req: #req_ident,
+            ) -> ::std::result::Result<#res_ident, maelstrom::error::Error> {
+                let reply = self.inner.rpc(dest, #msg_type_str, &req).await?;
+                ::serde_json::from_value(reply.body.payload).map_err(|_| {
+                    maelstrom::error::Error::from(maelstrom::error::ErrorCode::MalformedRequest)
+                })
             }
         });
     }
@@ -204,6 +223,25 @@ fn generate(schema: Schema) -> proc_macro2::TokenStream {
                         maelstrom::error::ErrorCode::NotSupported,
                     )),
                 }
+            }
+        }
+
+        #[derive(Clone)]
+        pub struct #client_ident {
+            inner: maelstrom::Client,
+        }
+
+        impl #client_ident {
+            pub fn new() -> Self {
+                Self { inner: maelstrom::Client::new() }
+            }
+
+            #(#client_methods)*
+        }
+
+        impl ::std::default::Default for #client_ident {
+            fn default() -> Self {
+                Self::new()
             }
         }
 
@@ -287,6 +325,7 @@ fn json_schema_to_type(schema: &JsonSchema, optional: bool) -> proc_macro2::Toke
             let inner = json_schema_to_type(items, false);
             quote! { ::std::vec::Vec<#inner> }
         }
+        JsonSchema::Object => quote! { ::serde_json::Value },
     };
 
     if optional {

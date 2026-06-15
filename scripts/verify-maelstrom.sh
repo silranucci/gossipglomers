@@ -10,7 +10,8 @@
 
 set -euo pipefail
 
-RESULTS="store/latest/results.edn"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+RESULTS="$REPO_ROOT/store/latest/results.edn"
 
 if [[ ! -f "$RESULTS" ]]; then
     echo "error: $RESULTS not found — did the test run complete?" >&2
