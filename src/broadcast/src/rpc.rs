@@ -35,7 +35,7 @@ pub mod error {
         }
     }
 }
-///Echo
+///Broadcast
 ///
 /// <details><summary>JSON schema</summary>
 ///
@@ -43,49 +43,41 @@ pub mod error {
 ///{
 ///  "type": "object",
 ///  "required": [
-///    "echo"
+///    "message"
 ///  ],
 ///  "properties": {
-///    "echo": {
-///      "type": "string"
+///    "message": {
+///      "type": "integer"
 ///    }
 ///  }
 ///}
 /// ```
 /// </details>
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
-pub struct Echo {
-    pub echo: String,
+pub struct Broadcast {
+    pub message: i64,
 }
-impl From<&Echo> for Echo {
-    fn from(value: &Echo) -> Self {
+impl From<&Broadcast> for Broadcast {
+    fn from(value: &Broadcast) -> Self {
         value.clone()
     }
 }
-///EchoOk
+///BroadcastOk
 ///
 /// <details><summary>JSON schema</summary>
 ///
 /// ```json
 ///{
 ///  "type": "object",
-///  "required": [
-///    "echo"
-///  ],
-///  "properties": {
-///    "echo": {
-///      "type": "string"
-///    }
-///  }
+///  "additionalProperties": false
 ///}
 /// ```
 /// </details>
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
-pub struct EchoOk {
-    pub echo: String,
-}
-impl From<&EchoOk> for EchoOk {
-    fn from(value: &EchoOk) -> Self {
+#[serde(deny_unknown_fields)]
+pub struct BroadcastOk {}
+impl From<&BroadcastOk> for BroadcastOk {
+    fn from(value: &BroadcastOk) -> Self {
         value.clone()
     }
 }
@@ -143,7 +135,108 @@ impl From<&InitOk> for InitOk {
         value.clone()
     }
 }
-pub trait EchoApi {
+///Read
+///
+/// <details><summary>JSON schema</summary>
+///
+/// ```json
+///{
+///  "type": "object",
+///  "additionalProperties": false
+///}
+/// ```
+/// </details>
+#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct Read {}
+impl From<&Read> for Read {
+    fn from(value: &Read) -> Self {
+        value.clone()
+    }
+}
+///ReadOk
+///
+/// <details><summary>JSON schema</summary>
+///
+/// ```json
+///{
+///  "type": "object",
+///  "required": [
+///    "messages"
+///  ],
+///  "properties": {
+///    "messages": {
+///      "type": "array",
+///      "items": {
+///        "type": "integer"
+///      }
+///    }
+///  }
+///}
+/// ```
+/// </details>
+#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
+pub struct ReadOk {
+    pub messages: Vec<i64>,
+}
+impl From<&ReadOk> for ReadOk {
+    fn from(value: &ReadOk) -> Self {
+        value.clone()
+    }
+}
+///Topology
+///
+/// <details><summary>JSON schema</summary>
+///
+/// ```json
+///{
+///  "type": "object",
+///  "required": [
+///    "topology"
+///  ],
+///  "properties": {
+///    "topology": {
+///      "type": "object",
+///      "additionalProperties": {
+///        "type": "array",
+///        "items": {
+///          "type": "string"
+///        }
+///      }
+///    }
+///  }
+///}
+/// ```
+/// </details>
+#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
+pub struct Topology {
+    pub topology: ::std::collections::HashMap<String, Vec<String>>,
+}
+impl From<&Topology> for Topology {
+    fn from(value: &Topology) -> Self {
+        value.clone()
+    }
+}
+///TopologyOk
+///
+/// <details><summary>JSON schema</summary>
+///
+/// ```json
+///{
+///  "type": "object",
+///  "additionalProperties": false
+///}
+/// ```
+/// </details>
+#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct TopologyOk {}
+impl From<&TopologyOk> for TopologyOk {
+    fn from(value: &TopologyOk) -> Self {
+        value.clone()
+    }
+}
+pub trait BroadcastApi {
     fn init(
         &self,
         req: maelstrom::message::Request<Init>,
@@ -153,26 +246,44 @@ pub trait EchoApi {
             maelstrom::error::ErrorCode,
         >,
     > + ::std::marker::Send;
-    fn echo(
+    fn topology(
         &self,
-        req: maelstrom::message::Request<Echo>,
+        req: maelstrom::message::Request<Topology>,
     ) -> impl ::std::future::Future<
         Output = ::std::result::Result<
-            maelstrom::message::Response<EchoOk>,
+            maelstrom::message::Response<TopologyOk>,
+            maelstrom::error::ErrorCode,
+        >,
+    > + ::std::marker::Send;
+    fn broadcast(
+        &self,
+        req: maelstrom::message::Request<Broadcast>,
+    ) -> impl ::std::future::Future<
+        Output = ::std::result::Result<
+            maelstrom::message::Response<BroadcastOk>,
+            maelstrom::error::ErrorCode,
+        >,
+    > + ::std::marker::Send;
+    fn read(
+        &self,
+        req: maelstrom::message::Request<Read>,
+    ) -> impl ::std::future::Future<
+        Output = ::std::result::Result<
+            maelstrom::message::Response<ReadOk>,
             maelstrom::error::ErrorCode,
         >,
     > + ::std::marker::Send;
 }
-pub struct EchoServer<T>(::std::sync::Arc<T>);
-impl<T> EchoServer<T> {
+pub struct BroadcastServer<T>(::std::sync::Arc<T>);
+impl<T> BroadcastServer<T> {
     pub fn new(inner: T) -> Self {
         Self(::std::sync::Arc::new(inner))
     }
 }
 impl<T> maelstrom::service::Service<maelstrom::message::Request<::serde_json::Value>>
-for EchoServer<T>
+for BroadcastServer<T>
 where
-    T: EchoApi + ::std::marker::Send + ::std::marker::Sync,
+    T: BroadcastApi + ::std::marker::Send + ::std::marker::Sync,
 {
     type Response = maelstrom::message::Message<::serde_json::Value>;
     type Error = maelstrom::error::Error;
@@ -185,9 +296,27 @@ where
                 let inner = ::std::sync::Arc::clone(&self.0);
                 unary("init_ok", move |r| async move { inner.init(r).await }, req).await
             }
-            "echo" => {
+            "topology" => {
                 let inner = ::std::sync::Arc::clone(&self.0);
-                unary("echo_ok", move |r| async move { inner.echo(r).await }, req).await
+                unary(
+                        "topology_ok",
+                        move |r| async move { inner.topology(r).await },
+                        req,
+                    )
+                    .await
+            }
+            "broadcast" => {
+                let inner = ::std::sync::Arc::clone(&self.0);
+                unary(
+                        "broadcast_ok",
+                        move |r| async move { inner.broadcast(r).await },
+                        req,
+                    )
+                    .await
+            }
+            "read" => {
+                let inner = ::std::sync::Arc::clone(&self.0);
+                unary("read_ok", move |r| async move { inner.read(r).await }, req).await
             }
             _kind => {
                 Err(
@@ -200,10 +329,10 @@ where
     }
 }
 #[derive(Clone)]
-pub struct EchoClient {
+pub struct BroadcastClient {
     inner: maelstrom::Client,
 }
-impl EchoClient {
+impl BroadcastClient {
     pub fn new() -> Self {
         Self {
             inner: maelstrom::Client::new(),
@@ -222,12 +351,38 @@ impl EchoClient {
                 )
             })
     }
-    pub async fn echo(
+    pub async fn topology(
         &self,
         dest: impl ::std::convert::Into<::std::string::String>,
-        req: Echo,
-    ) -> ::std::result::Result<EchoOk, maelstrom::error::Error> {
-        let reply = self.inner.rpc(dest, "echo", &req).await?;
+        req: Topology,
+    ) -> ::std::result::Result<TopologyOk, maelstrom::error::Error> {
+        let reply = self.inner.rpc(dest, "topology", &req).await?;
+        ::serde_json::from_value(reply.body.payload)
+            .map_err(|_| {
+                maelstrom::error::Error::from(
+                    maelstrom::error::ErrorCode::MalformedRequest,
+                )
+            })
+    }
+    pub async fn broadcast(
+        &self,
+        dest: impl ::std::convert::Into<::std::string::String>,
+        req: Broadcast,
+    ) -> ::std::result::Result<BroadcastOk, maelstrom::error::Error> {
+        let reply = self.inner.rpc(dest, "broadcast", &req).await?;
+        ::serde_json::from_value(reply.body.payload)
+            .map_err(|_| {
+                maelstrom::error::Error::from(
+                    maelstrom::error::ErrorCode::MalformedRequest,
+                )
+            })
+    }
+    pub async fn read(
+        &self,
+        dest: impl ::std::convert::Into<::std::string::String>,
+        req: Read,
+    ) -> ::std::result::Result<ReadOk, maelstrom::error::Error> {
+        let reply = self.inner.rpc(dest, "read", &req).await?;
         ::serde_json::from_value(reply.body.payload)
             .map_err(|_| {
                 maelstrom::error::Error::from(
@@ -236,7 +391,7 @@ impl EchoClient {
             })
     }
 }
-impl ::std::default::Default for EchoClient {
+impl ::std::default::Default for BroadcastClient {
     fn default() -> Self {
         Self::new()
     }
