@@ -105,12 +105,18 @@ impl<B> Response<B> {
     /// Create a response with no metadata override; the framework fills in
     /// `src`, `dest`, `kind`, and `in_reply_to` automatically.
     pub fn new(payload: B) -> Self {
-        Self { metadata: None, payload }
+        Self {
+            metadata: None,
+            payload,
+        }
     }
 
     /// Create a response with explicit routing metadata.
     pub fn with_metadata(metadata: Metadata, payload: B) -> Self {
-        Self { metadata: Some(metadata), payload }
+        Self {
+            metadata: Some(metadata),
+            payload,
+        }
     }
 
     pub fn body(&self) -> &B {

@@ -1,5 +1,8 @@
 use crate::rpc::{Generate, GenerateOk, Init, InitOk, UniqueIdApi};
-use maelstrom::{error::ErrorCode, message::{Request, Response}};
+use maelstrom::{
+    error::ErrorCode,
+    message::{Request, Response},
+};
 use std::sync::{
     OnceLock,
     atomic::{AtomicU64, Ordering},
@@ -28,6 +31,8 @@ impl UniqueIdApi for UniqueIdService {
     async fn generate(&self, _req: Request<Generate>) -> Result<Response<GenerateOk>, ErrorCode> {
         let node_id = self.node_id.get().map(|s| s.as_str()).unwrap_or("unknown");
         let seq = self.counter.fetch_add(1, Ordering::Relaxed);
-        Ok(Response::new(GenerateOk { id: format!("{}-{}", node_id, seq) }))
+        Ok(Response::new(GenerateOk {
+            id: format!("{}-{}", node_id, seq),
+        }))
     }
 }

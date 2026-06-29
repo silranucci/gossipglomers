@@ -27,6 +27,8 @@ jobs:
               - 'src/echo/**'
             unique_ids:
               - 'src/unique-ids/**'
+            broadcast:
+              - 'src/broadcast/**'
 
   test-echo:
     needs: changes
@@ -46,6 +48,27 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Test
         run: just test echo
+      - name: Verify result
+        run: ./scripts/verify-maelstrom.sh
+
+  test-broadcast:
+    needs: changes
+    if: needs.changes.outputs.core == 'true' || needs.changes.outputs.broadcast == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extractions/setup-just@v2
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: gossipglomers-maelstrom:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Test
+        run: just test broadcast 1 20 "--rate 10"
       - name: Verify result
         run: ./scripts/verify-maelstrom.sh
 

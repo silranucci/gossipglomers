@@ -1,0 +1,75 @@
+{
+  "service": "Broadcast",
+  "messages": [
+    {
+      "name": "init",
+      "response_type": "init_ok",
+      "request": {
+        "type": "object",
+        "properties": {
+          "node_id": { "type": "string" },
+          "node_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["node_id", "node_ids"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "topology",
+      "response_type": "topology_ok",
+      "request": {
+        "type": "object",
+        "properties": {
+          "topology": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "required": ["topology"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "broadcast",
+      "response_type": "broadcast_ok",
+      "request": {
+        "type": "object",
+        "properties": {
+          "message": { "type": "integer" }
+        },
+        "required": ["message"]
+      },
+      "response": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "read",
+      "response_type": "read_ok",
+      "request": {
+        "type": "object",
+        "properties": {}
+      },
+      "response": {
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": { "type": "integer" }
+          }
+        },
+        "required": ["messages"]
+      }
+    }
+  ]
+}
