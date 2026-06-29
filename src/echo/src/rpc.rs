@@ -47,7 +47,7 @@ impl<T> EchoServer<T> {
     }
 }
 impl<T> maelstrom::service::Service<maelstrom::message::Request<::serde_json::Value>>
-for EchoServer<T>
+    for EchoServer<T>
 where
     T: EchoApi + ::std::marker::Send + ::std::marker::Sync,
 {
@@ -66,13 +66,9 @@ where
                 let inner = ::std::sync::Arc::clone(&self.0);
                 unary("echo_ok", move |r| async move { inner.echo(r).await }, req).await
             }
-            _kind => {
-                Err(
-                    maelstrom::error::Error::from(
-                        maelstrom::error::ErrorCode::NotSupported,
-                    ),
-                )
-            }
+            _kind => Err(maelstrom::error::Error::from(
+                maelstrom::error::ErrorCode::NotSupported,
+            )),
         }
     }
 }
@@ -92,12 +88,9 @@ impl EchoClient {
         req: Init,
     ) -> ::std::result::Result<InitOk, maelstrom::error::Error> {
         let reply = self.inner.rpc(dest, "init", &req).await?;
-        ::serde_json::from_value(reply.body.payload)
-            .map_err(|_| {
-                maelstrom::error::Error::from(
-                    maelstrom::error::ErrorCode::MalformedRequest,
-                )
-            })
+        ::serde_json::from_value(reply.body.payload).map_err(|_| {
+            maelstrom::error::Error::from(maelstrom::error::ErrorCode::MalformedRequest)
+        })
     }
     pub async fn echo(
         &self,
@@ -105,12 +98,9 @@ impl EchoClient {
         req: Echo,
     ) -> ::std::result::Result<EchoOk, maelstrom::error::Error> {
         let reply = self.inner.rpc(dest, "echo", &req).await?;
-        ::serde_json::from_value(reply.body.payload)
-            .map_err(|_| {
-                maelstrom::error::Error::from(
-                    maelstrom::error::ErrorCode::MalformedRequest,
-                )
-            })
+        ::serde_json::from_value(reply.body.payload).map_err(|_| {
+            maelstrom::error::Error::from(maelstrom::error::ErrorCode::MalformedRequest)
+        })
     }
 }
 impl ::std::default::Default for EchoClient {
@@ -122,13 +112,9 @@ async fn unary<F, Fut, ReqBody, ResBody>(
     response_type: &'static str,
     f: F,
     req: maelstrom::message::Request<::serde_json::Value>,
-) -> ::std::result::Result<
-    maelstrom::message::Message<::serde_json::Value>,
-    maelstrom::error::Error,
->
+) -> ::std::result::Result<maelstrom::message::Message<::serde_json::Value>, maelstrom::error::Error>
 where
-    F: ::std::ops::FnOnce(maelstrom::message::Request<ReqBody>) -> Fut
-        + ::std::marker::Send,
+    F: ::std::ops::FnOnce(maelstrom::message::Request<ReqBody>) -> Fut + ::std::marker::Send,
     Fut: ::std::future::Future<
             Output = ::std::result::Result<
                 maelstrom::message::Response<ResBody>,
@@ -139,21 +125,19 @@ where
     ResBody: ::serde::Serialize + ::std::marker::Send,
 {
     let (req_meta, body_value) = req.into_parts();
-    let typed_body: ReqBody = ::serde_json::from_value(body_value)
-        .map_err(|_| maelstrom::error::Error::from(
-            maelstrom::error::ErrorCode::MalformedRequest,
-        ))?;
+    let typed_body: ReqBody = ::serde_json::from_value(body_value).map_err(|_| {
+        maelstrom::error::Error::from(maelstrom::error::ErrorCode::MalformedRequest)
+    })?;
     let typed_req = maelstrom::message::Request::new(req_meta.clone(), typed_body);
     let response = f(typed_req).await.map_err(maelstrom::error::Error::from)?;
     let (override_meta, res_body) = response.into_parts();
-    let meta = override_meta
-        .unwrap_or_else(|| maelstrom::message::Metadata {
-            src: req_meta.dest,
-            dest: req_meta.src,
-            kind: response_type.to_string(),
-            msg_id: None,
-            in_reply_to: req_meta.msg_id,
-        });
+    let meta = override_meta.unwrap_or_else(|| maelstrom::message::Metadata {
+        src: req_meta.dest,
+        dest: req_meta.src,
+        kind: response_type.to_string(),
+        msg_id: None,
+        in_reply_to: req_meta.msg_id,
+    });
     Ok(maelstrom::message::Message {
         src: meta.src,
         dest: meta.dest,
@@ -161,8 +145,7 @@ where
             kind: meta.kind,
             msg_id: meta.msg_id,
             in_reply_to: meta.in_reply_to,
-            payload: ::serde_json::to_value(res_body)
-                .expect("failed to serialize response body"),
+            payload: ::serde_json::to_value(res_body).expect("failed to serialize response body"),
         },
     })
 }
